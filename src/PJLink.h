@@ -80,6 +80,8 @@ namespace pjlink {
         PJLINK_FREEZE,        //"FREZ": set/get
       };
 
+      constexpr static char PJLINK_TERMINAL = '\r';
+
       // constructor
       PJLinkOperator();
       // costructor with initializing the password
@@ -127,8 +129,6 @@ namespace pjlink {
       // minimum length that the packet always ensure the data size at least: header + control + icon (request / response) + termination
       constexpr static uint8_t num_fix_packet = length_header + length_control + 2;
       constexpr static uint16_t max_cap_param = 128;
-
-      constexpr static char PJLINK_TERMINAL = '\r';
 
       constexpr static char PJLINK_HEADER = '%';
       constexpr static char PJLINK_REQUEST = static_cast<char>(Action::REQUEST);
