@@ -15,7 +15,10 @@
 #include "MD5Builder.h"
 #endif
 
-#define PJLINK_FORMAT_MESSAGE PSTR("%s%%%1d%4s%c%s\r")  // (encrypted password)%[1|2][command(4 bytes)]['='|' '][parameters]\r
+// format of the message
+// capital 'S' means that the argument is PROGMEM value
+// https://forum.arduino.cc/t/using-progmem-with-sprintf_p/369973/3
+#define PJLINK_FORMAT_MESSAGE PSTR("%s%%%1d%4S%c%s\r")  // (encrypted password)%[1|2][command(4 bytes)]['='|' '][parameters]\r
 
 namespace pjlink {
   class PJLinkOperator{
@@ -77,8 +80,6 @@ namespace pjlink {
         PJLINK_FREEZE,        //"FREZ": set/get
       };
 
-      const static char PJLINK_TERMINAL = '\r';
-
       // constructor
       PJLinkOperator();
       // costructor with initializing the password
@@ -93,10 +94,12 @@ namespace pjlink {
       void process(String str) { for (auto c : str) iterate(c);  }
       
       // 受け取った文字列に対してコマンドとパラメータを読み取る
-      inline char getPacketAction(void) { return static_cast<char>(action == PJLINK_REQUEST ? Action::REQUEST : Action::RESPONSE); }
+      inline char getPacketAction(void) { return action; }
       inline uint16_t getPacketParamSize(void) { return num_parameter; }
       inline const char* getPacketCommand(void) { return command; }
       inline const char* getPacketParameter(void) { return parameter;  }
+
+      int getErrorCode(void);
 
       void setPassword(const char*);
 
@@ -113,6 +116,8 @@ namespace pjlink {
       // generate a command to freeze (class 2)
       const char* setFreeze(bool);
 
+      const char* getProjectorInfo(PJLinkOperator::Control ctrl, uint8_t ver = 1);
+
     private:
       // parameter size : 128 byte max
       constexpr static uint8_t length_header = 2;
@@ -123,10 +128,11 @@ namespace pjlink {
       constexpr static uint8_t num_fix_packet = length_header + length_control + 2;
       constexpr static uint16_t max_cap_param = 128;
 
+      constexpr static char PJLINK_TERMINAL = '\r';
+
       constexpr static char PJLINK_HEADER = '%';
-      constexpr static char PJLINK_REQUEST = ' ';
-      constexpr static char PJLINK_RESPONSE = '=';
-      constexpr static char PJLINK_PARAM_INQUIRY = '?';
+      constexpr static char PJLINK_REQUEST = static_cast<char>(Action::REQUEST);
+      constexpr static char PJLINK_RESPONSE = static_cast<char>(Action::RESPONSE);
       
       constexpr static char PJLINK_PARAM_NOSECURE = '0';
       constexpr static char PJLINK_PARAM_SECURE = '1'; // 0:no secure or 1:secure
@@ -148,7 +154,7 @@ namespace pjlink {
       // encrypted password with MD5
       char* crypto = new char[length_password + 1] {};
 
-      // action (request:0 or response:1)
+      // action (request:' ' or response:'=')
       char action = PJLINK_REQUEST;
       // command
       char command[length_control + 1] {};
@@ -166,7 +172,7 @@ namespace pjlink {
       void resetPacket(void);
 
       const char* generatePacket(PJLinkOperator::Control ctrl, const char* param, unsigned int length, uint8_t ver = 1, bool is_res = false);
-      const char* getCommandControl(int);
+      const PROGMEM char* getCommandControl(int);
       PJLinkOperator::Control convertCommandText(const char*);
   };
 

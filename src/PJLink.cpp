@@ -74,6 +74,20 @@ namespace pjlink {
     }
   }
 
+  int PJLinkOperator::getErrorCode()
+  {
+    if (strncmp_P(parameter, PSTR("ERR1"), length_control) == 0)
+      return static_cast<int>(Error::ERR1_UNDEFINED);
+    else if (strncmp_P(parameter, PSTR("ERR2"), length_control) == 0)
+      return static_cast<int>(Error::ERR2_OUTRANGE);
+    else if (strncmp_P(parameter, PSTR("ERR3"), length_control) == 0)
+      return static_cast<int>(Error::ERR3_TIMEOUT);
+    else if (strncmp_P(parameter, PSTR("ERR4"), length_control) == 0)
+      return static_cast<int>(Error::ERR4_BROKEN);
+    else
+      return static_cast<int>(Error::OK);
+  }
+
   void PJLinkOperator::setPassword(const char* pwd)
   {
     // get the length of user password
@@ -158,6 +172,12 @@ namespace pjlink {
     return PJLinkOperator::generatePacket(PJLinkOperator::Control::PJLINK_FREEZE, flag ? "1" : "0", num_fix_packet + 1, 2);
   }
 
+  const char* PJLinkOperator::getProjectorInfo(PJLinkOperator::Control ctrl, uint8_t ver)
+  {
+    // when you send a command to request projector information, you need to set the parameter "?"
+    return generatePacket(ctrl, "?", num_fix_packet + 1, ver);
+  }
+
   void PJLinkOperator::authorization(const char* seed)
   {
     // copy the random seed and password to buffer
@@ -200,9 +220,6 @@ namespace pjlink {
 
   const char* PJLinkOperator::generatePacket(PJLinkOperator::Control ctrl, const char* param, unsigned int length, uint8_t ver, bool is_res)
   {
-    // command string
-    const char* control = PJLinkOperator::getCommandControl(static_cast<int>(ctrl));
-
     // reset output message
     for (auto i = 0; i < max_cap_param + num_fix_packet; i++) output[i] = '\0';
 
@@ -213,66 +230,67 @@ namespace pjlink {
     // create message following to the format
     // [response] "(encrypted password)%1POWR=OK\r"
     // [request] "(encrypted password)%1POWR 1\r"
-    snprintf_P(output, len, PJLINK_FORMAT_MESSAGE, pwd, ver, control, is_res ? PJLinkOperator::PJLINK_RESPONSE : PJLinkOperator::PJLINK_REQUEST, param);
+    snprintf_P(output, len, PJLINK_FORMAT_MESSAGE, pwd, ver, PJLinkOperator::getCommandControl(static_cast<int>(ctrl)), is_res ? PJLinkOperator::PJLINK_RESPONSE : PJLinkOperator::PJLINK_REQUEST, param);
     // assign CR explicitly, because sprintf_P cannot handle it correctly
     output[len - 1] = PJLinkOperator::PJLINK_TERMINAL;
 
     return output;
   }
 
-  const char* PJLinkOperator::getCommandControl(int ctrl)
+  // https://forum.arduino.cc/t/what-does-the-f-do-exactly/89384
+  const PROGMEM char* PJLinkOperator::getCommandControl(int ctrl)
   {
     switch(static_cast<Control>(ctrl))  // cast from uint8_t to enum(Control)
     {
       // class 1
       case Control::PJLINK_POWER:
-        return "POWR";
+        return PSTR("POWR");
       case Control::PJLINK_INPUT:
-        return "INPT";
+        return PSTR("INPT");
       case Control::PJLINK_INPUT_LIST:
-        return "INST";
+        return PSTR("INST");
       case Control::PJLINK_MUTE:
-        return "AVMT";
+        return PSTR("AVMT");
       case Control::PJLINK_ERROR:
-        return "ERST";
+        return PSTR("ERST");
       case Control::PJLINK_LAMP:
-        return "LAMP";
+        return PSTR("LAMP");
       case Control::PJLINK_NAME:
-        return "NAME";
+        return PSTR("NAME");
       case Control::PJLINK_MAKER:
-        return "INF1";
+        return PSTR("INF1");
       case Control::PJLINK_MODEL:
-        return "INF2";
+        return PSTR("INF2");
       case Control::PJLINK_INFO:
-        return "INFO";
+        return PSTR("INFO");
       case Control::PJLINK_CLASS:
-        return "CLSS";
+        return PSTR("CLSS");
       // class 2
       case Control::PJLINK_SERIAL:
-        return "SNUM";
+        return PSTR("SNUM");
       case Control::PJLINK_VERSION:
-        return "SVER";
+        return PSTR("SVER");
       case Control::PJLINK_INPUT_NAME:
-        return "INNM";
+        return PSTR("INNM");
       case Control::PJLINK_RESOLUTION:
-        return "IRES";
+        return PSTR("IRES");
       case Control::PJLINK_RES_RECOMMEND:
-        return "RRES";
+        return PSTR("RRES");
       case Control::PJLINK_TIME_FILTER:
-        return "FILT";
+        return PSTR("FILT");
       case Control::PJLINK_MODEL_LAMP:
-        return "RLMP";
+        return PSTR("RLMP");
       case Control::PJLINK_MODEL_FILTER:
-        return "RFIL";
+        return PSTR("RFIL");
       case Control::PJLINK_VOLUME_SPK:
-        return "SVOL";
+        return PSTR("SVOL");
       case Control::PJLINK_VOLUME_MIC:
-        return "MVOL";
+        return PSTR("MVOL");
       case Control::PJLINK_FREEZE:
-        return "FREZ";
+        return PSTR("FREZ");
       // Undefined Control Command
       default:
-        return NULL;
+        return nullptr;
     }
   }
     
